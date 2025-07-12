@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCam Green Screen Effect</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            margin: 0 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .video-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .video-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        video, canvas {
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            max-width: 100%;
+            height: auto;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .preset-backgrounds {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .preset-bg {
+            width: 60px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .preset-bg:hover {
+            border-color: white;
+            transform: scale(1.1);
+        }
+
+        .preset-bg.active {
+            border-color: #4CAF50;
+            transform: scale(1.1);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .fullscreen-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background: black;
+            cursor: pointer;
+        }
+
+        .fullscreen-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 18px;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .fullscreen-message.show {
+            opacity: 1;
+        }
+
+        .uploaded-bg {
+            width: 60px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .uploaded-bg:hover {
+            border-color: white;
+            transform: scale(1.1);
+        }
+
+        .uploaded-bg.active {
+            border-color: #4CAF50;
+            transform: scale(1.1);
+        }
+
+        .uploaded-bg .remove-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 16px;
+            height: 16px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 10px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .uploaded-bg:hover .remove-btn {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 WebCam Green Screen Effect</h1>
+        
+        <div class="controls">
+            <button id="startBtn">Start Camera</button>
+            <button id="stopBtn" disabled>Stop Camera</button>
+            <button id="fullscreenBtn" disabled>🔍 Fullscreen</button>
+            
+            <div class="control-group">
+                <label>Green Threshold</label>
+                <input type="range" id="threshold" min="0" max="1" step="0.01" value="0.4">
+                <span id="thresholdValue">0.4</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Smoothness</label>
+                <input type="range" id="smoothness" min="0" max="50" step="1" value="10">
+                <span id="smoothnessValue">10</span>
+            </div>
+            
+            <label for="bgUpload" class="file-label">
+                📁 Upload Background
+            </label>
+            <input type="file" id="bgUpload" accept="image/*" multiple>
+        </div>
+
+        <div class="preset-backgrounds">
+            <div class="preset-bg" style="background: linear-gradient(45deg, #667eea, #764ba2)" data-type="gradient1"></div>
+            <div class="preset-bg" style="background: linear-gradient(45deg, #f093fb, #f5576c)" data-type="gradient2"></div>
+            <div class="preset-bg" style="background: linear-gradient(45deg, #4facfe, #00f2fe)" data-type="gradient3"></div>
+            <div class="preset-bg" style="background: linear-gradient(45deg, #43e97b, #38f9d7)" data-type="gradient4"></div>
+            <div class="preset-bg" style="background: #000000" data-type="black"></div>
+            <div class="preset-bg" style="background: #ffffff" data-type="white"></div>
+        </div>
+
+        <div id="uploadedBackgrounds" class="preset-backgrounds" style="display: none;">
+            <h4 style="width: 100%; margin: 10px 0 5px 0; font-size: 14px;">Uploaded Backgrounds:</h4>
+        </div>
+
+        <div class="video-container">
+            <div class="video-section">
+                <h3>Original Video</h3>
+                <video id="video" width="320" height="240" autoplay muted></video>
+            </div>
+            
+            <div class="video-section">
+                <h3>Green Screen Result</h3>
+                <canvas id="canvas" width="320" height="240"></canvas>
+            </div>
+        </div>
+
+        <div class="status" id="status">
+            Click "Start Camera" to begin. Make sure you have a green background behind you for best results!
+        </div>
+    </div>
+
+    <script>
+        class GreenScreenApp {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.stream = null;
+                this.animationId = null;
+                
+                this.threshold = 0.4;
+                this.smoothness = 10;
+                this.backgroundImage = null;
+                this.backgroundType = 'gradient1';
+                this.uploadedBackgrounds = [];
+                this.isFullscreen = false;
+                
+                this.setupEventListeners();
+                this.updateStatus('Ready to start camera');
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startCamera());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopCamera());
+                document.getElementById('fullscreenBtn').addEventListener('click', () => this.toggleFullscreen());
+                
+                const thresholdSlider = document.getElementById('threshold');
+                thresholdSlider.addEventListener('input', (e) => {
+                    this.threshold = parseFloat(e.target.value);
+                    document.getElementById('thresholdValue').textContent = this.threshold;
+                });
+                
+                const smoothnessSlider = document.getElementById('smoothness');
+                smoothnessSlider.addEventListener('input', (e) => {
+                    this.smoothness = parseInt(e.target.value);
+                    document.getElementById('smoothnessValue').textContent = this.smoothness;
+                });
+                
+                document.getElementById('bgUpload').addEventListener('change', (e) => this.handleBackgroundUpload(e));
+                
+                document.querySelectorAll('.preset-bg').forEach(preset => {
+                    preset.addEventListener('click', () => {
+                        this.selectBackground(preset, preset.dataset.type, null);
+                    });
+                });
+                
+                // Set default active preset
+                document.querySelector('.preset-bg').classList.add('active');
+                
+                // Handle escape key for fullscreen exit
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.isFullscreen) {
+                        this.exitFullscreen();
+                    }
+                });
+            }
+
+            async startCamera() {
+                try {
+                    this.updateStatus('Requesting camera access...');
+                    
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 480 }
+                    });
+                    
+                    this.video.srcObject = this.stream;
+                    
+                    this.video.addEventListener('loadedmetadata', () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        this.startProcessing();
+                        this.updateStatus('Camera active - Green screen effect running');
+                    });
+                    
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('fullscreenBtn').disabled = false;
+                    
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    this.updateStatus('Error: Could not access camera. Please check permissions.');
+                }
+            }
+
+            stopCamera() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                
+                this.video.srcObject = null;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('fullscreenBtn').disabled = true;
+                
+                this.updateStatus('Camera stopped');
+            }
+
+            startProcessing() {
+                const processFrame = () => {
+                    if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+                        this.processFrame();
+                    }
+                    this.animationId = requestAnimationFrame(processFrame);
+                };
+                processFrame();
+            }
+
+            processFrame() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Draw video frame to canvas
+                this.ctx.drawImage(this.video, 0, 0, width, height);
+                
+                // Get image data
+                const frame = this.ctx.getImageData(0, 0, width, height);
+                const data = frame.data;
+                
+                // Create background
+                this.drawBackground(width, height);
+                const background = this.ctx.getImageData(0, 0, width, height);
+                const bgData = background.data;
+                
+                // Process green screen effect
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Check if pixel is green
+                    if (this.isGreenPixel(r, g, b)) {
+                        // Replace with background
+                        data[i] = bgData[i];         // R
+                        data[i + 1] = bgData[i + 1]; // G
+                        data[i + 2] = bgData[i + 2]; // B
+                        data[i + 3] = bgData[i + 3]; // A
+                    }
+                }
+                
+                // Apply smoothing
+                if (this.smoothness > 0) {
+                    this.applySmoothingFilter(data, width, height);
+                }
+                
+                // Put processed frame back
+                this.ctx.putImageData(frame, 0, 0);
+            }
+
+            isGreenPixel(r, g, b) {
+                // Convert to normalized values
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+                
+                // Check if green is dominant and above threshold
+                const greenDominance = gNorm - Math.max(rNorm, bNorm);
+                const greenIntensity = gNorm;
+                
+                return greenDominance > this.threshold && greenIntensity > 0.3;
+            }
+
+            applySmoothingFilter(data, width, height) {
+                const smoothed = new Uint8ClampedArray(data);
+                const radius = Math.floor(this.smoothness / 10);
+                
+                for (let y = radius; y < height - radius; y++) {
+                    for (let x = radius; x < width - radius; x++) {
+                        const idx = (y * width + x) * 4;
+                        
+                        let r = 0, g = 0, b = 0, count = 0;
+                        
+                        for (let dy = -radius; dy <= radius; dy++) {
+                            for (let dx = -radius; dx <= radius; dx++) {
+                                const neighborIdx = ((y + dy) * width + (x + dx)) * 4;
+                                r += data[neighborIdx];
+                                g += data[neighborIdx + 1];
+                                b += data[neighborIdx + 2];
+                                count++;
+                            }
+                        }
+                        
+                        smoothed[idx] = r / count;
+                        smoothed[idx + 1] = g / count;
+                        smoothed[idx + 2] = b / count;
+                    }
+                }
+                
+                data.set(smoothed);
+            }
+
+            drawBackground(width, height) {
+                if (this.backgroundImage) {
+                    // Draw uploaded image
+                    this.ctx.drawImage(this.backgroundImage, 0, 0, width, height);
+                } else {
+                    // Draw preset background
+                    this.drawPresetBackground(width, height);
+                }
+            }
+
+            drawPresetBackground(width, height) {
+                const gradient = this.ctx.createLinearGradient(0, 0, width, height);
+                
+                switch (this.backgroundType) {
+                    case 'gradient1':
+                        gradient.addColorStop(0, '#667eea');
+                        gradient.addColorStop(1, '#764ba2');
+                        break;
+                    case 'gradient2':
+                        gradient.addColorStop(0, '#f093fb');
+                        gradient.addColorStop(1, '#f5576c');
+                        break;
+                    case 'gradient3':
+                        gradient.addColorStop(0, '#4facfe');
+                        gradient.addColorStop(1, '#00f2fe');
+                        break;
+                    case 'gradient4':
+                        gradient.addColorStop(0, '#43e97b');
+                        gradient.addColorStop(1, '#38f9d7');
+                        break;
+                    case 'black':
+                        this.ctx.fillStyle = '#000000';
+                        this.ctx.fillRect(0, 0, width, height);
+                        return;
+                    case 'white':
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.fillRect(0, 0, width, height);
+                        return;
+                }
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, width, height);
+            }
+
+            handleBackgroundUpload(event) {
+                const files = event.target.files;
+                Array.from(files).forEach(file => {
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const bgData = {
+                                    id: Date.now() + Math.random(),
+                                    name: file.name,
+                                    image: img,
+                                    dataUrl: e.target.result
+                                };
+                                
+                                this.uploadedBackgrounds.push(bgData);
+                                this.addUploadedBackgroundToUI(bgData);
+                                
+                                // Auto-select the newly uploaded background
+                                this.selectBackground(null, 'uploaded', bgData.image);
+                                
+                                this.updateStatus(`Background uploaded: ${file.name}`);
+                            };
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Clear the input so the same file can be uploaded again
+                event.target.value = '';
+            }
+
+            addUploadedBackgroundToUI(bgData) {
+                const container = document.getElementById('uploadedBackgrounds');
+                container.style.display = 'flex';
+                
+                const bgElement = document.createElement('div');
+                bgElement.className = 'uploaded-bg';
+                bgElement.style.backgroundImage = `url(${bgData.dataUrl})`;
+                bgElement.dataset.id = bgData.id;
+                bgElement.title = bgData.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.removeUploadedBackground(bgData.id);
+                });
+                
+                bgElement.appendChild(removeBtn);
+                
+                bgElement.addEventListener('click', () => {
+                    this.selectBackground(bgElement, 'uploaded', bgData.image);
+                });
+                
+                container.appendChild(bgElement);
+            }
+
+            removeUploadedBackground(id) {
+                this.uploadedBackgrounds = this.uploadedBackgrounds.filter(bg => bg.id !== id);
+                const element = document.querySelector(`[data-id="${id}"]`);
+                if (element) {
+                    element.remove();
+                }
+                
+                if (this.uploadedBackgrounds.length === 0) {
+                    document.getElementById('uploadedBackgrounds').style.display = 'none';
+                    // Switch back to default background if current was removed
+                    if (this.backgroundType === 'uploaded') {
+                        const defaultPreset = document.querySelector('.preset-bg');
+                        this.selectBackground(defaultPreset, defaultPreset.dataset.type, null);
+                    }
+                }
+            }
+
+            selectBackground(element, type, image) {
+                // Remove active class from all backgrounds
+                document.querySelectorAll('.preset-bg, .uploaded-bg').forEach(el => 
+                    el.classList.remove('active'));
+                
+                // Add active class to selected element
+                if (element) {
+                    element.classList.add('active');
+                }
+                
+                this.backgroundType = type;
+                this.backgroundImage = image;
+            }
+
+            toggleFullscreen() {
+                if (this.isFullscreen) {
+                    this.exitFullscreen();
+                } else {
+                    this.enterFullscreen();
+                }
+            }
+
+            enterFullscreen() {
+                this.isFullscreen = true;
+                
+                // Create fullscreen canvas
+                const fullscreenCanvas = document.createElement('canvas');
+                fullscreenCanvas.id = 'fullscreenCanvas';
+                fullscreenCanvas.className = 'fullscreen-canvas';
+                fullscreenCanvas.width = window.innerWidth;
+                fullscreenCanvas.height = window.innerHeight;
+                
+                // Create popup message
+                const message = document.createElement('div');
+                message.className = 'fullscreen-message';
+                message.innerHTML = '🔍 Fullscreen Mode<br><small>Click anywhere or press ESC to exit</small>';
+                
+                document.body.appendChild(fullscreenCanvas);
+                document.body.appendChild(message);
+                
+                // Show message with animation
+                setTimeout(() => message.classList.add('show'), 100);
+                
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    message.classList.remove('show');
+                    setTimeout(() => {
+                        if (message.parentNode) {
+                            message.remove();
+                        }
+                    }, 500);
+                }, 3000);
+                
+                // Switch processing to fullscreen canvas
+                this.fullscreenCtx = fullscreenCanvas.getContext('2d');
+                this.originalCanvas = this.canvas;
+                this.originalCtx = this.ctx;
+                this.canvas = fullscreenCanvas;
+                this.ctx = this.fullscreenCtx;
+                
+                // Click to exit fullscreen
+                fullscreenCanvas.addEventListener('click', () => this.exitFullscreen());
+                
+                document.getElementById('fullscreenBtn').textContent = '🔍 Exit Fullscreen';
+            }
+
+            exitFullscreen() {
+                this.isFullscreen = false;
+                
+                // Remove fullscreen elements
+                const fullscreenCanvas = document.getElementById('fullscreenCanvas');
+                const message = document.querySelector('.fullscreen-message');
+                
+                if (fullscreenCanvas) fullscreenCanvas.remove();
+                if (message) message.remove();
+                
+                // Switch back to original canvas
+                if (this.originalCanvas) {
+                    this.canvas = this.originalCanvas;
+                    this.ctx = this.originalCtx;
+                    this.originalCanvas = null;
+                    this.originalCtx = null;
+                }
+                
+                document.getElementById('fullscreenBtn').textContent = '🔍 Fullscreen';
+            }
+
+            updateStatus(message) {
+                document.getElementById('status').textContent = message;
+            }
+        }
+
+        // Initialize the app when the page loads
+        window.addEventListener('load', () => {
+            new GreenScreenApp();
+        });
+    </script>
+</body>
+</html>
